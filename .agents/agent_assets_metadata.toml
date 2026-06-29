@@ -1,0 +1,26 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "TA-eArcBixTxGWsEZTeQd"
+uri = "file://jazeera-finance-project.tar.gz"
+type = "unspecified"
+title = "مشروع الجزيرة للتمويل — ملف كامل"
+
+[[outputs]]
+id = "_NQvHy0H0EvaCGILYiJq_"
+uri = "file://jazeera-finance.tar.gz"
+type = "unspecified"
+title = "الجزيرة للتمويل — كامل المشروع"
+
+[[outputs]]
+id = "Oqhp68_T-nFuaKDfCHU6Q"
+uri = "file://jazeera-finance-source.tar.gz"
+type = "unspecified"
+title = "الكود المصدري فقط — 216KB"
+
+[[outputs]]
+id = "31BWSF87r5m6XFtLdcOi-"
+uri = "file://jazeera-finance-complete.zip"
+type = "unspecified"
+title = "مشروع الجزيرة — نسخة Windows مصححة"
