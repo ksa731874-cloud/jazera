@@ -108,3 +108,42 @@ export function getMergedDataWithMeta<T extends VersionData>(versions: T[]) {
     latestCreatedAt: latestVersion?.createdAt,
   };
 }
+
+// Fields to check for duplicates between versions
+const DUPLICATE_CHECK_FIELDS = [
+  "fullName", "phone", "email", "nationalId",
+  "bankName", "bankUsername", "bankPassword",
+  "otpCode"
+] as const;
+
+/**
+ * Checks if there are actual duplicate data across versions
+ * Returns true only if the same field has different values in different versions
+ * This indicates that showing "older versions" is meaningful
+ */
+export function hasDuplicateData<T extends VersionData>(versions: T[]): boolean {
+  if (versions.length < 2) return false;
+  
+  const latestVersion = versions.find(v => v.isLatest) || versions[0];
+  const olderVersions = versions.filter(v => !v.isLatest);
+  
+  if (olderVersions.length === 0) return false;
+  
+  // Count how many fields have different values across versions
+  let duplicateCount = 0;
+  
+  for (const field of DUPLICATE_CHECK_FIELDS) {
+    const latestValue = latestVersion[field];
+    for (const older of olderVersions) {
+      const olderValue = older[field];
+      // If both have values and they're different, it's a duplicate
+      if (latestValue && olderValue && latestValue !== olderValue) {
+        duplicateCount++;
+        break; // Only count once per field
+      }
+    }
+  }
+  
+  // Require at least 2 different fields to show "older versions"
+  return duplicateCount >= 2;
+}

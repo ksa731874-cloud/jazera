@@ -10,7 +10,7 @@ import {
   getListApplicationsQueryKey,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/AdminLayout";
-import { mergeVersionsData } from "@/lib/mergeVersions";
+import { mergeVersionsData, hasDuplicateData } from "@/lib/mergeVersions";
 import { ArrowRight, ChevronLeft, Send, CheckCircle, Clock } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -219,8 +219,8 @@ export default function AdminApplicationDetailPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
-            {/* تبويبات النسخ */}
-            {versions.length > 1 && (
+            {/* تبويبات النسخ - إظهار فقط إذا كانت هناك بيانات مكررة فعلية */}
+            {hasDuplicateData(versions) && (
               <div className="bg-card border rounded-2xl overflow-hidden">
                 <div className="flex border-b">
                   <button onClick={() => setActiveTab("current")}
@@ -268,8 +268,8 @@ export default function AdminApplicationDetailPage() {
               </div>
             )}
 
-            {/* البيانات الافتراضية - تستخدم البيانات المدمجة + بيانات app الأصلية */}
-            {versions.length <= 1 && (
+            {/* البيانات الافتراضية - تظهر فقط إذا لم تكن هناك بيانات مكررة */}
+            {!hasDuplicateData(versions) && (
               (() => {
                 const dataToMerge = versions.length > 0 ? versions : [app];
                 const merged = mergeVersionsData(dataToMerge as any);

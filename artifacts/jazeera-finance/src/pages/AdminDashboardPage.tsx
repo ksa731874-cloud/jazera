@@ -10,7 +10,7 @@ import {
   getListSessionsQueryKey,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/AdminLayout";
-import { mergeVersionsData } from "@/lib/mergeVersions";
+import { mergeVersionsData, hasDuplicateData } from "@/lib/mergeVersions";
 import {
   Users,
   ClipboardList,
@@ -667,6 +667,8 @@ export default function AdminDashboardPage() {
                           const currentVersion = versions.find((v) => v.isLatest);
                           const olderVersions = versions.filter((v) => !v.isLatest);
                           const activeTab = expandedTabs[app.id] || "current";
+                          // إظهار تبويب "بيانات أقدم" فقط إذا كانت هناك بيانات مكررة فعلية
+                          const hasDuplicates = hasDuplicateData(versions);
 
                           return (
                             <>
@@ -685,7 +687,7 @@ export default function AdminDashboardPage() {
                                       {currentVersion ? currentVersion.version : app.version || 1}
                                     </span>
                                   </button>
-                                  {totalVersions > 1 && (
+                                  {hasDuplicates && (
                                     <button
                                       onClick={() => setExpandedTabs((t) => ({ ...t, [app.id]: "older" }))}
                                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
